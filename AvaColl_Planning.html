@@ -2355,7 +2355,7 @@ const FIREBASE_CONFIG = {
 
 const cloudSync = {
   enabled: !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId),
-  db: null, ref: null, ready: false,
+  db: null, ref: null, ready: false, _pendingPush: false,
   applyingRemote: false, pushTimer: null, lastPushTime: 0,
   clientId: Math.random().toString(36).slice(2),
   init(){
@@ -2371,6 +2371,7 @@ const cloudSync = {
           this.pushNow();
         }
         this.ready = true;
+        if(this._pendingPush){ this._pendingPush=false; this.pushNow(); }
         this.ref.onSnapshot(snap=>{
           if(!this.ready) return;
           const data = snap.data();
@@ -2378,7 +2379,13 @@ const cloudSync = {
           if(data._writer === this.clientId && data.updatedAt === this.lastPushTime) return;
           this.applyRemote(data);
         });
-      }).catch(e=>console.warn('Cloud sync init failed:', e));
+      }).catch(e=>{
+        console.warn('Cloud sync init failed:', e);
+        // Allow local writes even if the initial fetch failed, so the app
+        // still works (and can push) when offline or temporarily unreachable.
+        this.ready = true;
+        if(this._pendingPush){ this._pendingPush=false; this.pushNow(); }
+      });
     }catch(e){ console.warn('Cloud sync unavailable:', e); }
   },
   applyRemote(data){
@@ -2407,6 +2414,11 @@ const cloudSync = {
   },
   pushNow(){
     if(!this.enabled || !this.ref) return;
+    // Don't push to the cloud until the initial fetch has completed (or failed).
+    // Otherwise this device's stale/default local data (e.g. default admin
+    // password) would overwrite the shared cloud document and other devices'
+    // saved data, before we've even had a chance to apply what's already there.
+    if(!this.ready){ this._pendingPush = true; return; }
     this.lastPushTime = Date.now();
     const authToPush = Object.assign({}, Auth, {session:null});
     this.ref.set({ Z1, Auth: authToPush, updatedAt: this.lastPushTime, _writer: this.clientId })
