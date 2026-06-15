@@ -2392,12 +2392,59 @@ const cloudSync = {
     this.applyingRemote = true;
     try{
       if(data.Z1){
-        Z1 = Object.assign({}, Z1, data.Z1);
+        const remote = data.Z1;
+        const merged = Object.assign({}, Z1);
+        // Date/site-keyed maps: merge key-by-key so a device's own dates
+        // aren't wiped out by a cloud doc that doesn't have them yet,
+        // while still pulling in updates from other devices.
+        ['planning','casualties','spares','notes','monthlyRoster','siteConfig','leaveReg'].forEach(k=>{
+          if(remote[k] && typeof remote[k]==='object' && !Array.isArray(remote[k])){
+            merged[k] = Object.assign({}, Z1[k]||{}, remote[k]);
+          }
+        });
+        // personnel/sites arrays: if the cloud copy is still the untouched
+        // built-in default list but this device has a customized list,
+        // keep the local (customized) one instead of overwriting it.
+        const sameAsDefault = (arr,def)=> JSON.stringify(arr)===JSON.stringify(def);
+        if(Array.isArray(remote.personnel)){
+          merged.personnel = (sameAsDefault(remote.personnel, Z1_DEFAULT_PERSONNEL) && !sameAsDefault(Z1.personnel, Z1_DEFAULT_PERSONNEL))
+            ? Z1.personnel : remote.personnel;
+        }
+        if(Array.isArray(remote.sites)){
+          merged.sites = (sameAsDefault(remote.sites, Z1_DEFAULT_SITES) && !sameAsDefault(Z1.sites, Z1_DEFAULT_SITES))
+            ? Z1.sites : remote.sites;
+        }
+        ['dsLog','clientRequests'].forEach(k=>{
+          if(Array.isArray(remote[k])) merged[k]=remote[k];
+        });
+        // Anything else (flags, future fields) - take remote's value if present
+        Object.keys(remote).forEach(k=>{
+          if(!['planning','casualties','spares','notes','monthlyRoster','siteConfig','leaveReg','personnel','sites','dsLog','clientRequests'].includes(k)){
+            merged[k]=remote[k];
+          }
+        });
+        Z1 = merged;
         try{ localStorage.setItem('avacor_z1', JSON.stringify(Z1)); }catch(e){}
       }
       if(data.Auth){
         const mySession = Auth.session;
-        Auth = Object.assign({}, Auth, data.Auth);
+        const remoteUsers = Array.isArray(data.Auth.users) ? data.Auth.users : [];
+        const localUsers = Array.isArray(Auth.users) ? Auth.users : [];
+        const byId = {};
+        localUsers.forEach(u=>{ byId[u.id]=Object.assign({},u); });
+        remoteUsers.forEach(ru=>{
+          const lu = byId[ru.id];
+          if(!lu){ byId[ru.id]=Object.assign({},ru); return; }
+          // Don't let a stale/default "admin123" from the cloud stomp a
+          // password this device already customized - but DO sync a
+          // customized cloud password down to a device still on default.
+          if(ru.password==='admin123' && lu.password!=='admin123'){
+            byId[ru.id]=Object.assign({},lu,ru,{password:lu.password});
+          }else{
+            byId[ru.id]=Object.assign({},lu,ru);
+          }
+        });
+        Auth = Object.assign({}, Auth, data.Auth, {users: Object.values(byId)});
         Auth.session = mySession; // keep this device's own login session
         try{ localStorage.setItem('avacoll_auth', JSON.stringify(Auth)); }catch(e){}
       }
