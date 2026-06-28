@@ -897,6 +897,25 @@ button:active,.btn:active,.pbtn:active,.ibtn:active,.btn-home:active,.btn-settin
 .perm-chk input{accent-color:var(--primary);width:14px;height:14px;}
 .access-empty{text-align:center;padding:60px 24px;color:rgba(255,255,255,.85);}
 .access-empty .ae-icon{font-size:48px;margin-bottom:14px;}
+
+/* ══ VIEWPORT-FILL PLANNING SCREENS ══
+   Grids expand to fill the full browser window — only the grid scrolls,
+   not the whole page. Applies to Supervisor Planning, Monthly Roster,
+   and Daily Planning. */
+html,body{height:100%;}
+/* Supervisor Planning */
+#sc-planning.active{height:100vh;overflow:hidden;display:flex!important;flex-direction:column;}
+#sc-planning.active .main{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;}
+#sc-planning.active #tab-planning.active{flex:1;min-height:0;display:flex;flex-direction:column;}
+#sc-planning.active #pgrid-card{flex:1;min-height:0;display:flex;flex-direction:column;}
+#sc-planning.active .grid-wrap{flex:1;min-height:0;max-height:none;}
+/* Monthly Roster (Site Planning) */
+#sc-z1-monthly.active{height:100vh;overflow:hidden;display:flex!important;flex-direction:column;}
+#sc-z1-monthly.active .main{flex:1;min-height:0;overflow-y:auto;}
+#sc-z1-monthly #z1m-period-card{top:0!important;}
+/* Daily Planning */
+#sc-z1-planning.active{height:100vh;overflow:hidden;display:flex!important;flex-direction:column;}
+#sc-z1-planning.active .z1-body{flex:1;min-height:0;overflow-y:auto;max-width:none;}
 </style>
 </head>
 <body>
@@ -4533,7 +4552,7 @@ function z1mBuildGrid(site,dates){
   }
 
   // ── Roster table ──
-  h+='<div class="grid-wrap" style="max-height:75vh"><table class="pgrid" style="width:100%"><thead>';
+  h+='<div class="grid-wrap"><table class="pgrid" style="width:100%"><thead>';
   // Row 1 — day names
   h+='<tr><th class="nm">Guard / Officer</th>';
   h+='<th class="sum-hdr" colspan="5" style="text-align:center;letter-spacing:.5px">SUMMARY</th>';
