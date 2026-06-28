@@ -6981,13 +6981,14 @@ goTo('login');
 cloudSync.init();
 
 // ══════════════════════════════════════
-//  PWA: register service worker (only works on https:// or localhost —
-//  silently skipped on file:// so it never errors locally)
+//  PWA: service worker removed — was causing update caching issues.
+//  Unregister any existing SW so users get fresh content on every load.
 // ══════════════════════════════════════
-if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(r=>r.unregister());
   });
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
 }
 </script>
 <div id="global-ac-dd" style="position:fixed;background:#fff;border:2px solid var(--primary);border-radius:10px;box-shadow:0 8px 28px rgba(122,24,40,.2);z-index:9999;max-height:240px;overflow-y:auto;display:none;min-width:280px;"></div>
