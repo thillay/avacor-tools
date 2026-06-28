@@ -866,6 +866,19 @@ button:active,.btn:active,.pbtn:active,.ibtn:active,.btn-home:active,.btn-settin
 .login-err.show{display:block;animation:scrFadeIn .25s ease;}
 .ua-row{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;background:#fff;}
 .ua-row:hover{border-color:var(--primary);box-shadow:var(--shadow-sm);}
+.login-accounts{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:14px 10px;margin:8px 0 6px;max-height:280px;overflow-y:auto;padding:2px;}
+.login-acc-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border-radius:12px;cursor:pointer;border:2px solid transparent;transition:.15s;background:#fdf2f4;}
+.login-acc-tile:hover{border-color:var(--primary);background:#fce4e8;}
+.login-acc-name{font-size:11px;font-weight:700;color:var(--text);text-align:center;line-height:1.25;word-break:break-word;}
+.login-avatar{width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0;overflow:hidden;letter-spacing:.5px;}
+.login-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+.login-avatar-lg{width:64px;height:64px;font-size:22px;}
+.login-avatar.ua-avatar-sm{width:36px;height:36px;font-size:13px;}
+.login-back-link{font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;text-align:left;margin-bottom:14px;display:inline-flex;align-items:center;gap:4px;}
+.login-selected-user{display:flex;align-items:center;gap:12px;margin-bottom:18px;text-align:left;}
+.login-manual-link{font-size:11.5px;color:var(--muted);cursor:pointer;text-decoration:underline;margin-top:10px;display:inline-block;}
+.ua-avatar-wrap{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.ua-avatar-actions{display:flex;flex-direction:column;gap:6px;}
 .ua-name{font-size:13px;font-weight:700;color:var(--text);}
 .ua-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .ua-badge{font-size:9px;font-weight:800;color:var(--primary);background:#fdf2f4;border-radius:4px;padding:1px 5px;margin-left:6px;letter-spacing:.4px;}
@@ -887,16 +900,41 @@ button:active,.btn:active,.pbtn:active,.ibtn:active,.btn-home:active,.btn-settin
     <div class="login-card">
       <img src="https://avacor.mu/wp-content/uploads/2021/06/Avacor-Logo-01.png" alt="Avacor" style="height:56px;margin-bottom:8px;" onerror="this.style.display='none'">
       <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:28px;">Management Tools</div>
-      <div style="text-align:left;margin-bottom:14px;">
-        <label class="flabel">User ID</label>
-        <input class="finput" id="login-id" placeholder="Enter your ID" autocomplete="username" onkeydown="if(event.key==='Enter'){document.getElementById('login-pw').focus()}">
+
+      <!-- Step 1: Account picker -->
+      <div id="login-step-pick">
+        <div class="flabel" style="text-align:left;margin-bottom:6px;">Who's logging in?</div>
+        <div class="login-accounts" id="login-accounts"></div>
+        <div style="text-align:center;"><span class="login-manual-link" onclick="showManualLogin()">Sign in with User ID instead</span></div>
       </div>
-      <div style="text-align:left;margin-bottom:0;">
-        <label class="flabel">Password</label>
-        <input class="finput" id="login-pw" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){doLogin()}">
+
+      <!-- Step 2: Password for selected account -->
+      <div id="login-step-pw" style="display:none;">
+        <div class="login-back-link" onclick="backToAccountList()">&larr; Back</div>
+        <div class="login-selected-user" id="login-selected-user"></div>
+        <div style="text-align:left;margin-bottom:0;">
+          <label class="flabel">Password</label>
+          <input class="finput" id="login-pw" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){doLogin()}">
+        </div>
+        <div class="login-err" id="login-err"></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="doLogin()">🔓 Log In</button>
       </div>
-      <div class="login-err" id="login-err"></div>
-      <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="doLogin()">🔓 Log In</button>
+
+      <!-- Step 3: Manual ID + password -->
+      <div id="login-step-manual" style="display:none;">
+        <div class="login-back-link" onclick="backToAccountList()">&larr; Back</div>
+        <div style="text-align:left;margin-bottom:14px;">
+          <label class="flabel">User ID</label>
+          <input class="finput" id="login-id" placeholder="Enter your ID" autocomplete="username" onkeydown="if(event.key==='Enter'){document.getElementById('login-pw-manual').focus()}">
+        </div>
+        <div style="text-align:left;margin-bottom:0;">
+          <label class="flabel">Password</label>
+          <input class="finput" id="login-pw-manual" type="password" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){doLogin(true)}">
+        </div>
+        <div class="login-err" id="login-err-manual"></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="doLogin(true)">🔓 Log In</button>
+      </div>
+
       <div style="font-size:11px;color:var(--muted-light);margin-top:24px;">Avacor Ltd · Zone 1 Guarding</div>
     </div>
   </div>
@@ -2162,8 +2200,17 @@ button:active,.btn:active,.pbtn:active,.ibtn:active,.btn-home:active,.btn-settin
     <div class="card" style="margin-bottom:16px;">
       <div class="sec-title" id="ua-form-title">➕ Add User</div>
       <input type="hidden" id="ua-edit-id">
+      <input type="hidden" id="ua-avatar" value="">
+      <div class="ua-avatar-wrap">
+        <div class="login-avatar login-avatar-lg" id="ua-avatar-preview">?</div>
+        <div class="ua-avatar-actions">
+          <input type="file" id="ua-avatar-file" accept="image/*" style="display:none" onchange="onUaAvatarFile(event)">
+          <button class="btn btn-outline" type="button" style="font-size:11px;padding:6px 10px;" onclick="document.getElementById('ua-avatar-file').click()">📷 Upload Photo</button>
+          <button class="btn btn-outline" type="button" style="font-size:11px;padding:6px 10px;" onclick="removeUaAvatar()">✕ Remove Photo</button>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <div><label class="flabel">Full Name</label><input class="finput" id="ua-name" placeholder="e.g. John Doe"></div>
+        <div><label class="flabel">Full Name</label><input class="finput" id="ua-name" placeholder="e.g. John Doe" oninput="updateUaAvatarPreview()"></div>
         <div><label class="flabel">User ID (login)</label><input class="finput" id="ua-id" placeholder="e.g. jdoe" autocomplete="off"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
@@ -2450,6 +2497,8 @@ const cloudSync = {
       }
       if(typeof currentScreen!=='undefined' && currentScreen && currentScreen!=='login'){
         goTo(currentScreen);
+      } else if(typeof renderLoginAccounts==='function'){
+        renderLoginAccounts();
       }
     }catch(e){ console.warn('Cloud sync apply failed:', e); }
     this.applyingRemote = false;
@@ -2543,20 +2592,92 @@ function isAdmin(){const u=curUser();return!!u&&u.role==='admin';}
 function hasPerm(key){const u=curUser();if(!u)return false;if(u.role==='admin')return true;return(u.perms||[]).includes(key);}
 function hasAnyZ1Perm(){const u=curUser();if(!u)return false;if(u.role==='admin')return true;return ZONE1_PERM_KEYS.some(k=>(u.perms||[]).includes(k));}
 
-function doLogin(){
-  const idEl=document.getElementById('login-id'), pwEl=document.getElementById('login-pw');
-  const id=idEl.value.trim(), pw=pwEl.value;
+let _loginSelectedUser=null;
+function getInitials(name){
+  if(!name) return '?';
+  const parts=name.trim().split(/\s+/);
+  if(parts.length===1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
+}
+function avatarHtml(u,extraClass){
+  const cls='login-avatar'+(extraClass?(' '+extraClass):'');
+  if(u&&u.avatar) return `<div class="${cls}"><img src="${u.avatar}" alt=""></div>`;
+  return `<div class="${cls}">${getInitials(u&&u.name)}</div>`;
+}
+function renderLoginAccounts(){
+  const wrap=document.getElementById('login-accounts');
+  if(!wrap) return;
+  wrap.innerHTML=Auth.users.map(u=>`
+    <div class="login-acc-tile" onclick="selectLoginAccount('${u.id}')">
+      ${avatarHtml(u)}
+      <div class="login-acc-name">${u.name}</div>
+    </div>
+  `).join('');
+}
+function selectLoginAccount(id){
+  const u=Auth.users.find(x=>x.id===id);
+  if(!u) return;
+  _loginSelectedUser=u;
+  document.getElementById('login-step-pick').style.display='none';
+  document.getElementById('login-step-manual').style.display='none';
+  document.getElementById('login-step-pw').style.display='';
+  document.getElementById('login-selected-user').innerHTML=`${avatarHtml(u)}<div><div class="ua-name">${u.name}</div><div class="ua-meta">${u.id}</div></div>`;
+  const pwEl=document.getElementById('login-pw');
+  pwEl.value='';
   const err=document.getElementById('login-err');
-  const u=Auth.users.find(x=>x.id.toLowerCase()===id.toLowerCase());
-  if(!id||!pw||!u||u.password!==pw){
-    err.textContent='Invalid User ID or password.';
+  err.textContent=''; err.classList.remove('show');
+  setTimeout(()=>pwEl.focus(),50);
+}
+function backToAccountList(){
+  _loginSelectedUser=null;
+  document.getElementById('login-step-pw').style.display='none';
+  document.getElementById('login-step-manual').style.display='none';
+  document.getElementById('login-step-pick').style.display='';
+  const err=document.getElementById('login-err');
+  err.textContent=''; err.classList.remove('show');
+  renderLoginAccounts();
+}
+function showManualLogin(){
+  document.getElementById('login-step-pick').style.display='none';
+  document.getElementById('login-step-pw').style.display='none';
+  document.getElementById('login-step-manual').style.display='';
+  const err=document.getElementById('login-err-manual');
+  err.textContent=''; err.classList.remove('show');
+  document.getElementById('login-id').value='';
+  document.getElementById('login-pw-manual').value='';
+  setTimeout(()=>document.getElementById('login-id').focus(),50);
+}
+function doLogin(manual){
+  if(manual){
+    const idEl=document.getElementById('login-id'), pwEl=document.getElementById('login-pw-manual');
+    const id=idEl.value.trim(), pw=pwEl.value;
+    const err=document.getElementById('login-err-manual');
+    const u=Auth.users.find(x=>x.id.toLowerCase()===id.toLowerCase());
+    if(!id||!pw||!u||u.password!==pw){
+      err.textContent='Invalid User ID or password.';
+      err.classList.add('show');
+      return;
+    }
+    err.classList.remove('show');
+    Auth.session=u.id;
+    saveAuth();
+    idEl.value=''; pwEl.value='';
+    goTo('home');
+    return;
+  }
+  const pwEl=document.getElementById('login-pw');
+  const pw=pwEl.value;
+  const err=document.getElementById('login-err');
+  const u=_loginSelectedUser;
+  if(!u||!pw||u.password!==pw){
+    err.textContent='Incorrect password.';
     err.classList.add('show');
     return;
   }
   err.classList.remove('show');
   Auth.session=u.id;
   saveAuth();
-  idEl.value=''; pwEl.value='';
+  pwEl.value='';
   goTo('home');
 }
 function doLogout(){
@@ -2678,11 +2799,52 @@ function resetUaForm(){
   document.getElementById('ua-id').value='';
   document.getElementById('ua-pw').value='';
   document.getElementById('ua-role').value='user';
+  document.getElementById('ua-avatar').value='';
   document.getElementById('ua-form-title').textContent='➕ Add User';
   document.getElementById('ua-pw-label').textContent='Password';
   document.getElementById('ua-cancel-btn').style.display='none';
   renderUaPermsGrid([]);
   toggleUaPerms();
+  updateUaAvatarPreview();
+}
+function updateUaAvatarPreview(){
+  const el=document.getElementById('ua-avatar-preview');
+  if(!el)return;
+  const avatar=document.getElementById('ua-avatar').value;
+  const name=document.getElementById('ua-name').value;
+  if(avatar){
+    el.innerHTML=`<img src="${avatar}" alt="">`;
+  } else {
+    el.textContent=getInitials(name);
+  }
+}
+function onUaAvatarFile(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/')){toast('❌ Please select an image file');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const size=160;
+      const canvas=document.createElement('canvas');
+      canvas.width=size; canvas.height=size;
+      const ctx=canvas.getContext('2d');
+      const minSide=Math.min(img.width,img.height);
+      const sx=(img.width-minSide)/2, sy=(img.height-minSide)/2;
+      ctx.drawImage(img,sx,sy,minSide,minSide,0,0,size,size);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.8);
+      document.getElementById('ua-avatar').value=dataUrl;
+      updateUaAvatarPreview();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value='';
+}
+function removeUaAvatar(){
+  document.getElementById('ua-avatar').value='';
+  updateUaAvatarPreview();
 }
 function saveUserAccount(){
   const editId=document.getElementById('ua-edit-id').value;
@@ -2696,6 +2858,7 @@ function saveUserAccount(){
   const dup=Auth.users.find(u=>u.id.toLowerCase()===id.toLowerCase() && u.id!==editId);
   if(dup){toast('❌ That User ID is already taken');return;}
 
+  const avatar=document.getElementById('ua-avatar').value;
   if(editId){
     const u=Auth.users.find(x=>x.id===editId);
     if(!u)return;
@@ -2704,10 +2867,11 @@ function saveUserAccount(){
     }
     if(u.id!==id && Auth.session===u.id) Auth.session=id;
     u.id=id; u.name=name; u.role=role; u.perms=role==='admin'?[]:perms;
+    u.avatar=avatar||'';
     if(pw.trim()) u.password=pw;
   } else {
     if(!pw.trim()){toast('❌ Please set a password');return;}
-    Auth.users.push({id,name,password:pw,role,perms:role==='admin'?[]:perms});
+    Auth.users.push({id,name,password:pw,role,perms:role==='admin'?[]:perms,avatar:avatar||''});
   }
   saveAuth();
   resetUaForm();
@@ -2722,11 +2886,13 @@ function editUserAccount(id){
   document.getElementById('ua-id').value=u.id;
   document.getElementById('ua-pw').value='';
   document.getElementById('ua-role').value=u.role;
+  document.getElementById('ua-avatar').value=u.avatar||'';
   document.getElementById('ua-form-title').textContent='✏️ Edit User — '+u.name;
   document.getElementById('ua-pw-label').textContent='New Password (leave blank to keep current)';
   document.getElementById('ua-cancel-btn').style.display='';
   renderUaPermsGrid(u.perms||[]);
   toggleUaPerms();
+  updateUaAvatarPreview();
   window.scrollTo(0,0);
 }
 function deleteUserAccount(id){
@@ -2750,6 +2916,7 @@ function renderUsersList(){
   wrap.innerHTML=Auth.users.map(u=>{
     const permCount=u.role==='admin'?'All pages':((u.perms||[]).length+' page'+((u.perms||[]).length===1?'':'s')+' allowed');
     return `<div class="ua-row">
+      ${avatarHtml(u,'ua-avatar-sm')}
       <div style="flex:1;min-width:0;">
         <div class="ua-name">${u.name} ${u.role==='admin'?'<span class="ua-badge">ADMIN</span>':''}</div>
         <div class="ua-meta">ID: ${u.id} · ${permCount}</div>
@@ -2773,7 +2940,7 @@ function goTo(screen) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   closeSettingsMenu();
   // Auth & accounts
-  if(screen==='login')   { document.getElementById('sc-login').classList.add('active'); }
+  if(screen==='login')   { document.getElementById('sc-login').classList.add('active'); _loginSelectedUser=null; document.getElementById('login-step-pick').style.display=''; document.getElementById('login-step-pw').style.display='none'; document.getElementById('login-step-manual').style.display='none'; renderLoginAccounts(); }
   if(screen==='users')   { document.getElementById('sc-users').classList.add('active'); resetUaForm(); renderUsersList(); }
   // Home & planning
   if(screen==='home')     { document.getElementById('sc-home').classList.add('active'); renderHomeCards(); }
