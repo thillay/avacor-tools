@@ -345,6 +345,13 @@ body.quickfill-active .scell,body.quickfill-active .scell-empty{cursor:crosshair
 .z1m-req-inp{width:52px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:12px;text-align:center;}
 .z1m-add-row{display:flex;gap:8px;align-items:center;}
 .z1m-add-sel{flex:1;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;min-width:0;}
+.z1m-search-inp{width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.156a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E") no-repeat 10px center;}
+.z1m-search-inp:focus{border-color:var(--primary);}
+.z1m-search-results{margin-top:6px;max-height:240px;overflow-y:auto;}
+.z1m-search-row{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:6px;border-bottom:1px solid #f5f5f5;}
+.z1m-search-row:last-child{border-bottom:none;}
+.z1m-search-row:hover{background:#fdf2f4;}
+.z1m-search-here{opacity:.55;}
 .z1m-add-btn{background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .z1m-remove-btn{background:none;border:none;color:#ef4444;font-size:13px;cursor:pointer;padding:0 3px;line-height:1;opacity:.5;transition:opacity .15s;flex-shrink:0;}
 .z1m-remove-btn:hover{opacity:1;}
@@ -4327,6 +4334,13 @@ function z1mToggleSite(sid){
 function z1mRerender(){
   const openIds=[...document.querySelectorAll('.z1m-panel.open')].map(e=>e.id);
   const openSiteIds=[...document.querySelectorAll('.z1m-site-body.open')].map(e=>e.id);
+  // Save search queries for any open add panels
+  const savedSearch={};
+  openIds.filter(id=>id.startsWith('z1m-panel-add-')).forEach(id=>{
+    const sid=id.replace('z1m-panel-add-','');
+    const inp=document.getElementById('z1m-search-'+sid);
+    if(inp&&inp.value) savedSearch[sid]=inp.value;
+  });
   renderZ1Monthly();
   openIds.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('open');});
   openSiteIds.forEach(id=>{
@@ -4338,6 +4352,62 @@ function z1mRerender(){
       if(arrow)arrow.textContent='▼';
     }
   });
+  // Restore search queries
+  Object.keys(savedSearch).forEach(sid=>{
+    const inp=document.getElementById('z1m-search-'+sid);
+    if(inp){inp.value=savedSearch[sid]; z1mSearchPers(sid);}
+  });
+}
+function z1mSearchPers(sid){
+  const inp=document.getElementById('z1m-search-'+sid);
+  const wrap=document.getElementById('z1m-search-res-'+sid);
+  if(!inp||!wrap) return;
+  const q=inp.value.trim().toLowerCase();
+  if(!q){
+    wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:4px 0">Start typing to find personnel…</div>';
+    return;
+  }
+  const onRoster=new Set(Z1.personnel.filter(p=>p.siteId===sid).map(p=>p.name));
+  const seen=new Set();
+  const matches=Z1.personnel.filter(p=>{
+    if(seen.has(p.name))return false;
+    seen.add(p.name);
+    return (p.name||'').toLowerCase().includes(q)
+        || (p.rank||'').toLowerCase().includes(q)
+        || (p.num||'').toLowerCase().includes(q)
+        || (p.jobTitle||'').toLowerCase().includes(q)
+        || (p.siteName||'').toLowerCase().includes(q)
+        || (p.contact||'').includes(q);
+  }).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,20);
+  if(!matches.length){
+    wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:4px 0">No personnel found</div>';
+    return;
+  }
+  wrap.innerHTML=matches.map(p=>{
+    const here=onRoster.has(p.name);
+    const sub=[p.num?'#'+p.num:'',p.jobTitle||'',p.siteName||''].filter(Boolean).join(' · ');
+    const safeN=p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const safeR=(p.rank||'SG').replace(/'/g,"\\'");
+    return `<div class="z1m-search-row${here?' z1m-search-here':''}">
+      <span class="rank-badge rk-${p.rank||'DEF'}" style="font-size:11px">${p.rank||'SG'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;">${p.name}${here?' <span style="font-size:10px;color:var(--secondary)">★ On roster</span>':''}</div>
+        ${sub?`<div style="font-size:11px;color:var(--muted)">${sub}</div>`:''}
+      </div>
+      ${here
+        ?'<span style="font-size:11px;color:var(--muted)">Added</span>'
+        :`<button class="z1m-add-btn" style="font-size:11px;padding:4px 10px;flex-shrink:0" onclick="z1mAddGuardDirect('${sid}','${safeN}','${safeR}')">＋ Add</button>`}
+    </div>`;
+  }).join('');
+}
+function z1mAddGuardDirect(sid,name,rank){
+  if(Z1.personnel.some(p=>p.siteId===sid&&p.name===name)){
+    showToast(name+' is already on this roster'); return;
+  }
+  Z1.personnel.push({siteId:sid,name,rank:rank||'SG'});
+  z1save();
+  z1mRerender();
+  showToast('✅ '+name+' added to roster');
 }
 
 function z1mSaveCfg(sid){
@@ -4423,16 +4493,10 @@ function z1mBuildGrid(site,dates){
   }
 
   // ── Add-guard panel ──
-  const uniqueGuards=[...new Map(Z1.personnel.map(p=>[p.name,p])).values()].sort((a,b)=>a.name.localeCompare(b.name));
   h+=`<div class="z1m-panel" id="z1m-panel-add-${sid}">`;
-  h+=`<div class="z1m-add-row">`;
-  h+=`<select class="z1m-add-sel" id="z1m-add-sel-${sid}"><option value="">— Select guard to add —</option>`;
-  for(const p of uniqueGuards){
-    h+=`<option value="${p.rank||'SG'}|${p.name.replace(/"/g,'&quot;')}">${p.name} (${p.rank||'SG'})</option>`;
-  }
-  h+=`</select>`;
-  h+=`<button class="z1m-add-btn" onclick="z1mAddGuardToSite('${sid}')">Add to Roster</button>`;
-  h+=`</div></div>`;
+  h+=`<input class="z1m-search-inp" id="z1m-search-${sid}" placeholder="Search name, rank, emp #, site…" autocomplete="off" oninput="z1mSearchPers('${sid}')">`;
+  h+=`<div class="z1m-search-results" id="z1m-search-res-${sid}"><div style="color:var(--muted);font-size:12px;padding:4px 0">Start typing to find personnel…</div></div>`;
+  h+=`</div>`;
 
   // ── Requirements panel ──
   h+=`<div class="z1m-panel" id="z1m-panel-req-${sid}">`;
