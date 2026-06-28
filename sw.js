@@ -1,10 +1,8 @@
 // Minimal service worker for Avacor Ltd — Management Tools
-// Caches the app shell so it can be reopened (and partially used) offline.
-// Note: service workers only register in secure contexts (https:// or
-// http://localhost) — they are silently skipped on file:// URLs. See the
-// registration guard in AvaColl_Planning.html.
+// Network-first strategy: always try network, fall back to cache only if offline.
+// Bump CACHE_NAME to force cache refresh on all devices.
 
-const CACHE_NAME = 'avacor-app-v1';
+const CACHE_NAME = 'avacor-app-v2';
 const ASSETS = [
   './AvaColl_Planning.html',
   './manifest.json',
@@ -30,18 +28,18 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first: try network, update cache, fall back to cache if offline
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((resp) => {
+    fetch(event.request)
+      .then((resp) => {
+        if (resp && resp.status === 200) {
           const copy = resp.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
-          return resp;
-        })
-        .catch(() => cached);
-    })
+        }
+        return resp;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
